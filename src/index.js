@@ -27,6 +27,8 @@ var smog = require('smog-formula')
 var gunningFog = require('gunning-fog')
 var spacheFormula = require('spache-formula')
 
+//TODO - split repo into 2 parts
+
 var averages = {
   mean: mean,
   median: median,
