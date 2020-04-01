@@ -1,16 +1,7 @@
-var doc = require('global/document')
-var win = require('global/window')
-var createElement = require('virtual-dom/create-element')
-var diff = require('virtual-dom/diff')
-var patch = require('virtual-dom/patch')
-var h = require('virtual-dom/h')
-var debounce = require('debounce')
-var xtend = require('xtend')
-var mean = require('compute-mean')
-var median = require('compute-median')
-var mode = require('compute-mode')
-var unlerp = require('unlerp')
-var lerp = require('lerp')
+'use strict'
+
+module.exports = readabilityScores
+
 var unified = require('unified')
 var english = require('retext-english')
 var visit = require('unist-util-visit')
@@ -22,423 +13,312 @@ var daleChall = require('dale-chall')
 var daleChallFormula = require('dale-chall-formula')
 var ari = require('automated-readability')
 var colemanLiau = require('coleman-liau')
-var flesch = require('flesch')
+// Var flesch = require('flesch')
 var smog = require('smog-formula')
 var gunningFog = require('gunning-fog')
 var spacheFormula = require('spache-formula')
+var stemmer = require('stemmer')
 
-//TODO - split repo into 2 parts
-
-var averages = {
-  mean: mean,
-  median: median,
-  mode: modeMean
-}
-
-var types = {
-  sentence: 'SentenceNode',
-  paragraph: 'ParagraphNode'
-}
-
-var minAge = 5
-var maxAge = 22
-var defaultAge = 12
-var scale = 6
-
-var max = Math.max
 var min = Math.min
-var floor = Math.floor
 var round = Math.round
-var ceil = Math.ceil
-var sqrt = Math.sqrt
+
+var spacheStems
+var daleChallStems
+
+function populateSpacheStems() {
+	if (spacheStems === undefined) {
+		spacheStems = {}
+		let w
+		let s
+		for (w of spache) {
+			if (!w.includes("'")) {
+				s = stemmer(w)
+				spacheStems[s] = true
+			}
+		}
+	}
+}
+
+function populateDaleChallStems() {
+	if (daleChallStems === undefined) {
+		daleChallStems = {}
+		let w
+		let s
+		for (w of daleChall) {
+			if (!w.includes("'")) {
+				s = stemmer(w)
+				daleChallStems[s] = true
+			}
+		}
+	}
+}
+
+function roundTo2Decimals(n) {
+	return round((n + Number.EPSILON) * 100) / 100
+}
+
+// Flesch returns reading ease, whereas fleschKincaid returns grade level
+function fleschKincaid(counts) {
+	return (
+		0.39 * (counts.word / counts.sentence) +
+		11.8 * (counts.syllable / counts.word) -
+		15.59
+	)
+}
 
 var processor = unified().use(english)
-var main = doc.querySelectorAll('main')[0]
-var templates = [].slice.call(doc.querySelectorAll('template'))
 
-var state = {
-  type: 'SentenceNode',
-  average: 'median',
-  template: optionForTemplate(templates[0]),
-  value: valueForTemplate(templates[0]),
-  age: defaultAge
+/*
+Default Config:
+
+--set to true if you want the results to include all unfamiliar/difficult/polysyllabic words
+difficultWords = false
+
+--set to true if you want any words where the first letter is a capital to be treated as a recognized proper noun
+--for example, if the first word of the sentence is capitalized, it will be treated as familiar regardless of its difficulty
+capsAsNames = false
+
+--use only one of these to exclude all others:
+onlySpache = false
+onlyDaleChall = false
+onlyARI = false
+onlyColemanLiau = false
+onlyFleschKincaid = false
+onlySMOG = false
+onlyGunningFog = false
+
+--or any of these to exclude one at a time:
+--Spache is excluded by default as Dale-Chall is better for anything 4th grade or higher.
+skipDaleChall = false
+skipARI = false
+skipColemanLiau = false
+skipFleschKincaid = false
+skipSMOG = false
+skipGunningFog = false
+*/
+function readabilityScores(value, config) {
+	if (value) {
+		config = processConfig(config)
+
+		var tree = processor.runSync(processor.parse(value))
+		if (config.bSpache) {
+			populateSpacheStems()
+		}
+
+		if (config.bDaleChall) {
+			populateDaleChallStems()
+		}
+
+		return calcScores(tree, config)
+	}
 }
 
-var tree = render(state)
-var dom = main.appendChild(createElement(tree))
+function processConfig(config) {
+	var c = {}
+	var bNotOnly = true
+	if (config) {
+		bNotOnly = false
+		if (config.difficultWords) {
+			c.bDifficultWords = true
+		}
 
-function onchangevalue(ev) {
-  var prev = state.value
-  var next = ev.target.value
+		if (config.capsAsNames) {
+			c.bCapsAsNames = true
+		}
 
-  if (prev !== next) {
-    state.value = next
-    state.template = null
-    onchange()
-  }
+		if (config.onlySpache) {
+			c.bSpache = true
+		} else if (config.onlyDaleChall) {
+			c.bDaleChall = true
+		} else if (config.onlyARI) {
+			c.bARI = true
+		} else if (config.onlyColemanLiau) {
+			c.bColemanLiau = true
+		} else if (config.onlyFleschKincaid) {
+			c.bFleschKincaid = true
+		} else if (config.onlySMOG) {
+			c.bSMOG = true
+		} else if (config.onlyGunningFog) {
+			c.bGunningFog = true
+		} else {
+			bNotOnly = true
+		}
+	}
+
+	if (bNotOnly) {
+		c.bDaleChall = !config || !config.skipDaleChall
+		c.bARI = !config || !config.skipARI
+		c.bColemanLiau = !config || !config.skipColemanLiau
+		c.bFleschKincaid = !config || !config.skipFleschKincaid
+		c.bSMOG = !config || !config.skipSMOG
+		c.bGunningFog = !config || !config.skipGunningFog
+		c.bSpache = false
+	}
+
+	return c
 }
 
-function onchangeaverage(ev) {
-  state.average = ev.target.value.toLowerCase()
-  onchange()
-}
+function calcScores(tree, config) {
+	var spacheUniqueUnfamiliarWords = []
+	var daleChallDifficultWords = []
+	var polysyllabicWords = []
+	var complexPolysyllabicWord = 0
+	var polysyllabicWord = 0
+	var syllableCount = 0
+	var wordCount = 0
+	var letters = 0
+	var sentenceCount = 0
+	var counts
+	var results
 
-function onchangetype(ev) {
-  state.type = types[ev.target.value.toLowerCase()]
-  onchange()
-}
+	visit(tree, 'SentenceNode', sentence)
+	visit(tree, 'WordNode', word)
 
-function onchangetemplate(ev) {
-  var target = ev.target.selectedOptions[0]
-  var node = doc.querySelector('[data-label="' + target.textContent + '"]')
-  state.template = optionForTemplate(node)
-  state.value = valueForTemplate(node)
-  onchange()
-}
+	// Counts are used in calls to scores
+	counts = {
+		complexPolysillabicWord: complexPolysyllabicWord,
+		polysillabicWord: polysyllabicWord,
+		unfamiliarWord: spacheUniqueUnfamiliarWords.length,
+		difficultWord: daleChallDifficultWords.length,
+		syllable: syllableCount,
+		sentence: sentenceCount,
+		word: wordCount,
+		character: letters,
+		letter: letters
+	}
+	// Results are returned to the user
+	results = {
+		letterCount: letters,
+		syllableCount: syllableCount,
+		wordCount: wordCount,
+		sentenceCount: sentenceCount,
+		polysyllabicWordCount: complexPolysyllabicWord
+	}
+	if (config.bDifficultWords) {
+		results.polysyllabicWords = polysyllabicWords
+	}
 
-function onchangeage(ev) {
-  state.age = Number(ev.target.value)
-  onchange()
-}
+	if (config.bSpache) {
+		results.spacheUniqueUnfamiliarWordCount =
+			spacheUniqueUnfamiliarWords.length
+		if (config.bDifficultWords) {
+			results.spacheUniqueUnfamiliarWords = spacheUniqueUnfamiliarWords
+		}
 
-function onchange() {
-  var next = render(state)
-  dom = patch(dom, diff(tree, next))
-  tree = next
-}
+		results.spache = roundTo2Decimals(spacheFormula(counts))
+	}
 
-function render(state) {
-  var tree = processor.runSync(processor.parse(state.value))
-  var change = debounce(onchangevalue, 4)
-  var changeage = debounce(onchangeage, 4)
-  var key = 0
-  var unselected = true
-  var options = templates.map(function(template, index) {
-    var selected = optionForTemplate(template) === state.template
+	if (config.bDaleChall) {
+		results.daleChallDifficultWordCount = daleChallDifficultWords.length
+		if (config.bDifficultWords) {
+			results.daleChallDifficultWords = daleChallDifficultWords
+		}
 
-    if (selected) {
-      unselected = false
-    }
+		results.daleChall = min(
+			17,
+			daleChallFormula.gradeLevel(daleChallFormula(counts))[1]
+		)
+	}
 
-    return h(
-      'option',
-      {key: index, selected: selected},
-      optionForTemplate(template)
-    )
-  })
+	if (config.bARI) {
+		results.ari = roundTo2Decimals(ari(counts))
+	}
 
-  setTimeout(resize, 4)
+	if (config.bColemanLiau) {
+		results.colemanLiau = roundTo2Decimals(colemanLiau(counts))
+	}
 
-  return h('div', [
-    h('section.highlight', [h('h1', {key: 'title'}, 'Readability')]),
-    h('div', {key: 'editor', className: 'editor'}, [
-      h('div', {key: 'draw', className: 'draw'}, pad(all(tree, []))),
-      h('textarea', {
-        key: 'area',
-        value: state.value,
-        oninput: change,
-        onpaste: change,
-        onkeyup: change,
-        onmouseup: change
-      })
-    ]),
-    h('section.highlight', [
-      h('p', {key: 'byline'}, [
-        'This project measures readability in text with several formulas: ',
-        h(
-          'a',
-          {
-            href: 'https://en.wikipedia.org/wiki/Dale–Chall_readability_formula'
-          },
-          'Dale–Chall'
-        ),
-        ', ',
-        h(
-          'a',
-          {href: 'https://en.wikipedia.org/wiki/Automated_readability_index'},
-          'Automated Readability'
-        ),
-        ', ',
-        h(
-          'a',
-          {href: 'https://en.wikipedia.org/wiki/Coleman–Liau_index'},
-          'Coleman–Liau'
-        ),
-        ', ',
-        h(
-          'a',
-          {
-            href:
-              'https://en.wikipedia.org/wiki/Flesch–Kincaid_readability_tests#Flesch_reading_ease'
-          },
-          'Flesch'
-        ),
-        ', ',
-        h(
-          'a',
-          {href: 'https://en.wikipedia.org/wiki/Gunning_fog_index'},
-          'Gunning fog'
-        ),
-        ', ',
-        h('a', {href: 'https://en.wikipedia.org/wiki/SMOG'}, 'SMOG'),
-        ', and ',
-        h(
-          'a',
-          {href: 'https://en.wikipedia.org/wiki/Spache_readability_formula'},
-          'Spache'
-        ),
-        '.'
-      ]),
-      h('p', {key: 'ps'}, [
-        'You can edit the text above, or pick a template: ',
-        h(
-          'select',
-          {key: 'template', onchange: onchangetemplate},
-          [
-            unselected
-              ? h('option', {key: '-1', selected: unselected}, '--')
-              : null
-          ].concat(options)
-        ),
-        '.'
-      ]),
-      h('p', {key: 2}, [
-        'You can choose which target age you want to reach (now at ',
-        h('input', {
-          type: 'number',
-          min: minAge,
-          max: maxAge,
-          oninput: changeage,
-          onpaste: changeage,
-          onkeyup: changeage,
-          onmouseup: changeage,
-          attributes: {
-            value: defaultAge
-          }
-        }),
-        '), and text will be highlighted in green if the text matches that (albeit if ',
-        'they’re still in school). Red means it would take 6 years longer in school ',
-        '(so an age of ',
-        h(
-          'span',
-          {
-            title: 'Using the previous input updates the value reflected here'
-          },
-          String(state.age + 6)
-        ),
-        '), and the years between them mix gradually between green and red.'
-      ]),
-      h('p', {key: 3}, [
-        'You can pick which average to use (currently ',
-        h('select', {key: 'average', onchange: onchangeaverage}, [
-          h('option', {key: 0}, 'mean'),
-          h('option', {key: 1, selected: true}, 'median'),
-          h('option', {key: 2}, 'mode')
-        ]),
-        ').'
-      ]),
-      h('p', {key: 4}, [
-        'It’s now highlighting per ',
-        h('select', {key: 'type', onchange: onchangetype}, [
-          h('option', {key: 0}, 'paragraph'),
-          h('option', {key: 1, selected: true}, 'sentence')
-        ]),
-        ', but you can change that.'
-      ])
-    ]),
-    h('section.credits', {key: 'credits'}, [
-      h('p', [
-        h(
-          'a',
-          {href: 'https://github.com/wooorm/readability'},
-          'Fork this website'
-        ),
-        ' • ',
-        h(
-          'a',
-          {href: 'https://github.com/wooorm/readability/blob/src/license'},
-          'MIT'
-        ),
-        ' • ',
-        h('a', {href: 'https://wooorm.com'}, '@wooorm')
-      ])
-    ])
-  ])
+	if (config.bFleschKincaid) {
+		results.fleschKincaid = roundTo2Decimals(fleschKincaid(counts))
+	}
 
-  function all(node, parentIds) {
-    var children = node.children
-    var length = children.length
-    var index = -1
-    var results = []
+	if (config.bSMOG) {
+		results.smog = roundTo2Decimals(smog(counts))
+	}
 
-    while (++index < length) {
-      results = results.concat(one(children[index], parentIds.concat(index)))
-    }
+	if (config.bGunningFog) {
+		results.gunningFog = roundTo2Decimals(gunningFog(counts))
+	}
 
-    return results
-  }
+	return results
 
-  function one(node, parentIds) {
-    var result = 'value' in node ? node.value : all(node, parentIds)
-    var id = parentIds.join('-') + '-' + key
-    var attrs = node.type === state.type ? highlight(node) : null
+	function sentence() {
+		sentenceCount++
+	}
 
-    if (attrs) {
-      result = h('span', xtend({key: id, id: id}, attrs), result)
-      key++
-    }
+	function word(node) {
+		var value = toString(node)
+		var syllables = syllable(value)
+		var normalized = normalize(node, {allowApostrophes: true})
+		var reCap = /^[A-Z]/
+		var bInitCap = config.bCapsAsNames && value.match(reCap)
 
-    return result
-  }
+		wordCount++
+		syllableCount += syllables
+		letters += value.length
 
-  // Trailing white-space in a `textarea` is shown, but not in a `div` with
-  // `white-space: pre-wrap`.
-  // Add a `br` to make the last newline explicit.
-  function pad(nodes) {
-    var tail = nodes[nodes.length - 1]
+		// Count complex words for smog and gunning-fog based on whether they have 3+ syllables.
+		if (syllables >= 3) {
+			polysyllabicWord++
 
-    if (typeof tail === 'string' && tail.charAt(tail.length - 1) === '\n') {
-      nodes.push(h('br', {key: 'break'}))
-    }
+			if (!config.bCapsAsNames || bInitCap) {
+				complexPolysyllabicWord++
+				if (config.bDifficultWords) {
+					polysyllabicWords.push(value)
+				}
+			}
+		}
 
-    return nodes
-  }
-}
+		if (config.bSpache) {
+			// Find unique unfamiliar words for Spache.
 
-// Highlight a section.
-function highlight(node) {
-  var familiarWords = {}
-  var easyWord = {}
-  var complexPolysillabicWord = 0
-  var familiarWordCount = 0
-  var polysillabicWord = 0
-  var syllableCount = 0
-  var easyWordCount = 0
-  var wordCount = 0
-  var letters = 0
-  var sentenceCount = 0
-  var counts
-  var average
-  var weight
-  var hue
+			// Spache suffixes per https://readabilityformulas.com/spache-readability-formula.php
+			let reSuffixes = /(s|ing|ed)$/
 
-  visit(node, 'SentenceNode', sentence)
-  visit(node, 'WordNode', word)
+			if (
+				bInitCap ||
+				spache.includes(normalized) ||
+				(normalized.match(reSuffixes) &&
+					spacheStems[stemmer(normalized)])
+			) {
+				// Spache familiar word
+			} else if (!spacheUniqueUnfamiliarWords.includes(value)) {
+				spacheUniqueUnfamiliarWords.push(value)
+			}
+		}
 
-  counts = {
-    complexPolysillabicWord: complexPolysillabicWord,
-    polysillabicWord: polysillabicWord,
-    unfamiliarWord: wordCount - familiarWordCount,
-    difficultWord: wordCount - easyWordCount,
-    syllable: syllableCount,
-    sentence: sentenceCount,
-    word: wordCount,
-    character: letters,
-    letter: letters
-  }
+		if (config.bDaleChall) {
+			// Find unique difficult words for Dale-Chall.
+			// TODO: any hyphenated words where both parts are familiar would also be familiar, like battle-field.
 
-  average = averages[state.average]([
-    gradeToAge(daleChallFormula.gradeLevel(daleChallFormula(counts))[1]),
-    gradeToAge(ari(counts)),
-    gradeToAge(colemanLiau(counts)),
-    fleschToAge(flesch(counts)),
-    smogToAge(smog(counts)),
-    gradeToAge(gunningFog(counts)),
-    gradeToAge(spacheFormula(counts))
-  ])
+			// Dale-Chall suffixes per http://www.lefthandlogic.com/htmdocs/tools/okapi/okapimanual/dale_challWorksheet.PDF
+			//	 ['s', 'ies', 'ing', 'n', 'ed', 'ied', 'ly', 'er', 'ier', 'est', 'iest']
+			let reSuffixes = /(s|ing|n|ed|ly|er|est)$/
+			let reRemovableSuffixes = /(n|ly|(l?i)?er|(l?i)?est)$/
+			let reNumber = /^[1-9]\d{0,2}(,?\d{3})*$/
 
-  weight = unlerp(state.age, state.age + scale, average)
-  hue = lerp(120, 0, min(1, max(0, weight)))
+			// As "lively" is in the list, "liveliest" should pass due to iest being a valid suffix.
+			// Although "prick" is in the list, "prickly" is not.
+			// "Prickly" would be a valid base+suffix.
+			// But perhaps "prickliest" should not be valid too? Currently it will pass.
+			// TODO: Prevent words like "prickliest" from passing?
 
-  return {
-    style: {
-      backgroundColor: 'hsla(' + [hue, '93%', '70%', 0.5].join(', ') + ')'
-    }
-  }
+			// This does a much better job than https://readabilityformulas.com/dalechallformula/dale-chall-formula.php
+			// Tested on the Gettysburg address, this found plenty more that should be unfamiliar, without a bunch of other false positives for endings like "ing" and "ly"
 
-  function sentence() {
-    sentenceCount++
-  }
-
-  function word(node) {
-    var value = toString(node)
-    var syllables = syllable(value)
-    var normalized = normalize(node, {allowApostrophes: true})
-    var head
-
-    wordCount++
-    syllableCount += syllables
-    letters += value.length
-
-    // Count complex words for gunning-fog based on whether they have three or
-    // more syllables and whether they aren’t proper nouns.
-    // The last is checked a little simple, so this index might be over-eager.
-    if (syllables >= 3) {
-      polysillabicWord++
-      head = value.charAt(0)
-
-      if (head === head.toLowerCase()) {
-        complexPolysillabicWord++
-      }
-    }
-
-    // Find unique unfamiliar words for spache.
-    if (spache.includes(normalized) && familiarWords[normalized] !== true) {
-      familiarWords[normalized] = true
-      familiarWordCount++
-    }
-
-    // Find unique difficult words for dale-chall.
-    if (daleChall.includes(normalized) && easyWord[normalized] !== true) {
-      easyWord[normalized] = true
-      easyWordCount++
-    }
-  }
-}
-
-// Calculate the typical starting age (on the higher-end) when someone joins
-// `grade` grade, in the US.
-// See <https://en.wikipedia.org/wiki/Educational_stage#United_States>.
-function gradeToAge(grade) {
-  return round(grade + 5)
-}
-
-// Calculate the age relating to a Flesch result.
-function fleschToAge(value) {
-  return 20 - floor(value / 10)
-}
-
-// Calculate the age relating to a SMOG result.
-// See <http://www.readabilityformulas.com/smog-readability-formula.php>.
-function smogToAge(value) {
-  return ceil(sqrt(value) + 2.5)
-}
-
-function rows(node) {
-  if (!node) {
-    return
-  }
-
-  return (
-    ceil(
-      node.getBoundingClientRect().height /
-        parseInt(win.getComputedStyle(node).lineHeight, 10)
-    ) + 1
-  )
-}
-
-function optionForTemplate(template) {
-  return template.dataset.label
-}
-
-function valueForTemplate(template) {
-  return template.innerHTML + '\n\n— ' + optionForTemplate(template)
-}
-
-function resize() {
-  dom.querySelector('textarea').rows = rows(dom.querySelector('.draw'))
-}
-
-function modeMean(value) {
-  return mean(mode(value))
+			if (
+				bInitCap ||
+				daleChall.includes(normalized) ||
+				normalized.match(reNumber) ||
+				(normalized.match(reSuffixes) &&
+					daleChallStems[
+						stemmer(normalized.replace(reRemovableSuffixes, ''))
+					])
+			) {
+				// Dale Chall familiar word
+			} else {
+				daleChallDifficultWords.push(value)
+			}
+		}
+	}
 }

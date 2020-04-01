@@ -1,1 +1,3 @@
-dest/
+coverage/
+readability-scores.js
+readability-scores.min.js

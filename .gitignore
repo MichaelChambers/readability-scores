@@ -1,5 +1,8 @@
 .DS_Store
 *.log
+.nyc_output/
+coverage/
 node_modules/
-dest/
+readability-scores.js
+readability-scores.min.js
 yarn.lock

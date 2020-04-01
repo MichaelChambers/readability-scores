@@ -1,68 +1,84 @@
 {
-  "name": "www-readability",
-  "private": true,
+  "name": "readability-scores",
+  "version": "1.0.0",
+  "description": "Tests the readability of a string using multiple formulas",
   "license": "MIT",
-  "repository": "wooorm/readability",
-  "bugs": "https://github.com/wooorm/readability/issues",
+  "keywords": [
+    "automated",
+    "readability",
+    "coleman",
+    "liau",
+    "dale",
+    "chall",
+    "flesch",
+    "kincaid",
+    "gunning",
+    "fog",
+    "smog",
+    "spache",
+    "formula",
+    "index"
+  ],
+  "repository": "MichaelChambers/readability-scores",
+  "bugs": "https://github.com/MichaelChambers/readability-scores/issues",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/wooorm"
+  },
   "author": "Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)",
   "contributors": [
     "Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)"
   ],
+  "files": [
+    "index.js"
+  ],
   "dependencies": {
     "automated-readability": "^1.0.0",
     "coleman-liau": "^1.0.0",
-    "compute-mean": "^3.0.0",
-    "compute-median": "^2.0.0",
-    "compute-mode": "^1.0.0",
     "dale-chall": "^1.0.0",
     "dale-chall-formula": "^1.0.0",
-    "debounce": "^1.0.0",
     "flesch": "^1.0.0",
     "global": "^4.0.0",
     "gunning-fog": "^1.0.0",
-    "lerp": "^1.0.0",
     "nlcst-normalize": "^2.0.0",
     "nlcst-to-string": "^2.0.0",
     "retext-english": "^3.0.0",
     "smog-formula": "^1.0.0",
     "spache": "^1.0.0",
     "spache-formula": "^1.0.0",
+    "stemmer": "^1.0.5",
     "syllable": "^4.0.0",
     "unified": "^8.0.0",
-    "unist-util-visit": "^2.0.0",
-    "unlerp": "^1.0.0",
-    "virtual-dom": "^2.0.0",
-    "xtend": "^4.0.0"
+    "unist-util-visit": "^2.0.0"
   },
   "devDependencies": {
     "browserify": "^16.0.0",
-    "cssnano": "^4.0.0",
-    "postcss-cli": "^6.0.0",
+    "nyc": "^15.0.0",
     "prettier": "^1.0.0",
-    "rehype-cli": "^8.0.0",
-    "rehype-preset-minify": "^4.0.0",
-    "rehype-prevent-favicon-request": "^2.0.0",
     "remark-cli": "^7.0.0",
     "remark-preset-wooorm": "^6.0.0",
-    "stylelint": "^11.0.0",
-    "stylelint-config-standard": "^19.0.0",
+    "tape": "^4.0.0",
     "tinyify": "^2.0.0",
     "xo": "^0.25.0"
   },
   "scripts": {
-    "format": "remark . -qfo && prettier --write \"**/*.js\" && xo --fix && stylelint src/index.css --fix",
-    "build:js": "browserify src -o dest/index.js",
-    "build:css": "postcss src/index.css > dest/index.css",
-    "build:html": "rehype -u preset-minify -u prevent-favicon-request src/index.html -o dest",
-    "build": "npm run build:js && npm run build:css && npm run build:html",
-    "test": "npm run format && npm run build"
+    "format": "remark . -qfo && prettier --write \"**/*.js\" && xo --fix",
+    "build-bundle": "browserify . -s readabilityScores -o readability-scores.js",
+    "build-mangle": "browserify . -s readabilityScores -p tinyify -o readability-scores.min.js",
+    "build": "npm run build-bundle && npm run build-mangle",
+    "test-api": "node test",
+    "test-coverage": "nyc --reporter lcov tape test.js",
+    "test": "npm run format && npm run build && npm run test-coverage"
   },
-  "stylelint": {
-    "extends": "stylelint-config-standard"
+  "nyc": {
+    "check-coverage": true,
+    "lines": 100,
+    "functions": 100,
+    "branches": 97.9
   },
   "prettier": {
-    "tabWidth": 2,
-    "useTabs": false,
+    "tabWidth": 4,
+    "useTabs": true,
     "singleQuote": true,
     "bracketSpacing": false,
     "semi": false,
@@ -71,16 +87,9 @@
   "xo": {
     "prettier": true,
     "esnext": false,
-    "rules": {
-      "unicorn/prefer-node-append": "off"
-    }
-  },
-  "postcss": {
-    "plugins": {
-      "cssnano": {
-        "preset": "default"
-      }
-    }
+    "ignores": [
+      "readability-scores.js"
+	]
   },
   "remarkConfig": {
     "plugins": [
