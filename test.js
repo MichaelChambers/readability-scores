@@ -10,7 +10,7 @@ test('readabilityScores', function(t) {
 	t.equal(readabilityScores(), undefined, 'Undefined when no value is given')
 
 	// Dr Seuss, The Cat in the Hat
-	// Sally, things, and asked are not on the Spache list. All 3 should be allowed as familiar though, per the first name and allowed suffixes rules. But the current code does not recognize first names.
+	// "Sally", "things", and "asked" are not on the Spache list. All 3 should be allowed as familiar though, per the first name and allowed suffixes rules. But the current code does not recognize first names.
 	s =
 		'Then our mother came in And she said to us two, “Did you have any fun? Tell me. What did you do?” And Sally and I did not know what to say. Should we tell her The things that went on there that day? Well… what would YOU do If your mother asked you? The Cat in the Hat Look at me! Look at me! Look at me NOW! It is fun to have fun But you have to know how.'
 	results = readabilityScores(s, {onlySpache: true, difficultWords: true})
@@ -36,15 +36,29 @@ test('readabilityScores', function(t) {
 	t.equal(
 		results.spacheUniqueUnfamiliarWords,
 		undefined,
-		'DifficultWords config not used.'
+		'DifficultWords config not used - no spacheUniqueUnfamiliarWords.'
 	)
 
-	// Dale Chall Endings for Stemmer = /(s|ing|n|ed|ly|er|est)$/
-	// None of these are in the Dale Chall original list. All must use stemming. Note that the stem may not be a word: Liberties stem is liberti, which is why we stem the original list too.
-	// As "lively" is in the list, "liveliest" should pass due to iest being a valid suffix.
-	// But although "prick" is in the list, "prickly" is not. "Prickly" would be a valid base+suffix, but perhaps "prickliest" should not be valid.
+	// Dale-Chall suffixes per http://www.lefthandlogic.com/htmdocs/tools/okapi/okapimanual/dale_challWorksheet.PDF
+	//	 ['s', 'ies', 'ing', 'n', 'ed', 'ied', 'ly', 'er', 'ier', 'est', 'iest']
+	// None of the words below are in the Dale Chall original list. All must use stemming. Note that the stem may not be a word: "Liberties" stem is "liberti", which is why we stem the original list too.
+	// As "lively" is in the list, "livelier" and "liveliest" should pass due to "ier" and "iest" being valid suffixes.
+	// But although "prick" is in the list, "prickly" is not. "Prickly" would be a valid base+suffix, but "pricklier" and "prickliest" should not be valid.
 	s =
-		'Rights, Liberties rolling proven praised rested properly higher longest liveliest prickliest'
+		'Rights, Liberties rolling proven rested praised hurried properly higher longest lively livelier liveliest prick prickly pricklier prickliest'
+	results = readabilityScores(s, {onlyDaleChall: true, difficultWords: true})
+	t.equal(
+		results.daleChallDifficultWordCount,
+		2,
+		'Dale-Chall valid suffixes cannot be combined, so although "ly" and "ier"/"iest" are all valid, they cannot be combined to "lier"/"liest"'
+	)
+	t.ok(
+		results.daleChallDifficultWords.includes('pricklier') &&
+			results.daleChallDifficultWords.includes('prickliest'),
+		'Pricklier and prickliest are difficult words for a 4th grader.'
+	)
+	s =
+		'Rights, Liberties rolling proven rested praised hurried properly higher longest lively livelier liveliest prick prickly'
 	results = readabilityScores(s, {onlyDaleChall: true})
 	t.equal(
 		results.daleChallDifficultWordCount,
@@ -59,12 +73,12 @@ test('readabilityScores', function(t) {
 	t.equal(
 		results.daleChallDifficultWords,
 		undefined,
-		'DifficultWords config not used.'
+		'DifficultWords config not used - no daleChallDifficultWords.'
 	)
 	t.equal(
 		results.polysyllabicWords,
 		undefined,
-		'DifficultWords config not used.'
+		'DifficultWords config not used - no polysyllabicWords.'
 	)
 
 	// http://www.abrahamlincolnonline.org/lincoln/speeches/gettysburg.htm

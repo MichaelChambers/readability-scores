@@ -247,11 +247,11 @@ function calcScores(tree, config) {
 	}
 
 	function word(node) {
-		var value = toString(node)
-		var syllables = syllable(value)
-		var normalized = normalize(node, {allowApostrophes: true})
-		var reCap = /^[A-Z]/
-		var bInitCap = config.bCapsAsNames && value.match(reCap)
+		const value = toString(node)
+		const syllables = syllable(value)
+		const normalized = normalize(node, {allowApostrophes: true})
+		const reCap = /^[A-Z]/
+		const bInitCap = config.bCapsAsNames && value.match(reCap)
 
 		wordCount++
 		syllableCount += syllables
@@ -273,7 +273,7 @@ function calcScores(tree, config) {
 			// Find unique unfamiliar words for Spache.
 
 			// Spache suffixes per https://readabilityformulas.com/spache-readability-formula.php
-			let reSuffixes = /(s|ing|ed)$/
+			const reSuffixes = /(s|ing|ed)$/
 
 			if (
 				bInitCap ||
@@ -291,17 +291,7 @@ function calcScores(tree, config) {
 			// Find unique difficult words for Dale-Chall.
 			// TODO: any hyphenated words where both parts are familiar would also be familiar, like battle-field.
 
-			// Dale-Chall suffixes per http://www.lefthandlogic.com/htmdocs/tools/okapi/okapimanual/dale_challWorksheet.PDF
-			//	 ['s', 'ies', 'ing', 'n', 'ed', 'ied', 'ly', 'er', 'ier', 'est', 'iest']
-			let reSuffixes = /(s|ing|n|ed|ly|er|est)$/
-			let reRemovableSuffixes = /(n|ly|(l?i)?er|(l?i)?est)$/
-			let reNumber = /^[1-9]\d{0,2}(,?\d{3})*$/
-
-			// As "lively" is in the list, "liveliest" should pass due to iest being a valid suffix.
-			// Although "prick" is in the list, "prickly" is not.
-			// "Prickly" would be a valid base+suffix.
-			// But perhaps "prickliest" should not be valid too? Currently it will pass.
-			// TODO: Prevent words like "prickliest" from passing?
+			const reNumber = /^[1-9]\d{0,2}(,?\d{3})*$/
 
 			// This does a much better job than https://readabilityformulas.com/dalechallformula/dale-chall-formula.php
 			// Tested on the Gettysburg address, this found plenty more that should be unfamiliar, without a bunch of other false positives for endings like "ing" and "ly"
@@ -310,15 +300,35 @@ function calcScores(tree, config) {
 				bInitCap ||
 				daleChall.includes(normalized) ||
 				normalized.match(reNumber) ||
-				(normalized.match(reSuffixes) &&
-					daleChallStems[
-						stemmer(normalized.replace(reRemovableSuffixes, ''))
-					])
+				testDaleChallSuffixes(normalized)
 			) {
 				// Dale Chall familiar word
 			} else {
 				daleChallDifficultWords.push(value)
 			}
 		}
+	}
+
+	function testDaleChallSuffixes(normalized) {
+		// Dale-Chall suffixes per http://www.lefthandlogic.com/htmdocs/tools/okapi/okapimanual/dale_challWorksheet.PDF
+		//	 ['s', 'ies', 'ing', 'n', 'ed', 'ied', 'ly', 'er', 'ier', 'est', 'iest']
+		// As "lively" is in the list, "livelier" and "liveliest" should pass due to "ier" and "iest" being valid suffixes.
+		// But although "prick" is in the list, "prickly" is not. "Prickly" would be a valid base+suffix, but "pricklier" and "prickliest" should not be valid.
+		const reSuffixes = /(s|ing|n|ed|ly|er|est)$/
+		const reRemovableSuffixes = /(n|ly|(l?i)?er|(l?i)?est)$/
+		const reComboRemoveableSuffixes = /(lier|liest)$/
+
+		if (
+			normalized.match(reSuffixes) &&
+			daleChallStems[stemmer(normalized.replace(reRemovableSuffixes, ''))]
+		) {
+			const normLY = normalized.replace(reComboRemoveableSuffixes, 'ly')
+			return normalized === normLY || daleChall.includes(normLY)
+			// If normalized === normLY, then normalized does not end in lier/liest, so is already a valid base+suffix
+			// If normalized is one of "livelier" or "liveliest", normLY would be "lively", which is in daleChall so returns true
+			// if normalized is one of "pricklier" or "prickliest", normLY would be "prickly", which is NOT in daleChall so returns false
+		}
+
+		return false
 	}
 }
