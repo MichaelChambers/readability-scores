@@ -1,6 +1,6 @@
 {
   "name": "readability-scores",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Tests the readability of a string using multiple formulas",
   "license": "MIT",
   "keywords": [
@@ -25,8 +25,9 @@
     "type": "github",
     "url": "https://github.com/sponsors/wooorm"
   },
-  "author": "Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)",
+  "author": "Michael Chambers <chamicr@gmail.com>",
   "contributors": [
+    "Michael Chambers <chamicr@gmail.com>",
     "Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)"
   ],
   "files": [
