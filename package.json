@@ -1,6 +1,6 @@
 {
   "name": "readability-scores",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "Tests the readability of a string using multiple formulas",
   "license": "MIT",
   "keywords": [
@@ -31,8 +31,10 @@
     "Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)"
   ],
   "files": [
-    "index.js"
+    "index.js",
+    "index.d.ts"
   ],
+  "types": "index.d.ts",
   "dependencies": {
     "automated-readability": "^1.0.0",
     "coleman-liau": "^1.0.0",
