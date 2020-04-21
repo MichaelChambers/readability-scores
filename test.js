@@ -120,7 +120,7 @@ test('readabilityScores', function(t) {
 	)
 	t.equal(
 		results.fleschKincaid,
-		11,
+		10.96,
 		'Flesch-Kincaid: Gettysburg Address is readable by 11th graders. Average score.'
 	)
 	t.equal(
