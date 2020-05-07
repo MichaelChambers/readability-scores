@@ -38,6 +38,26 @@ test('readabilityScores', function(t) {
 		undefined,
 		'DifficultWords config not used - no spacheUniqueUnfamiliarWords.'
 	)
+	s = 'How many if difficult difficult?'
+	results = readabilityScores(s, {onlySpache: true})
+	t.equal(
+		results.spacheUniqueUnfamiliarWordCount,
+		1,
+		'For Spache, distinct unfamiliar words are only counted once.'
+	)
+	s = "I can't go. You aren't here."
+	results = readabilityScores(s, {onlySpache: true})
+	t.equal(
+		results.spacheUniqueUnfamiliarWordCount,
+		1,
+		'For Spache, "can\'t" is familiar but "aren\'t" is not.'
+	)
+	results = readabilityScores(s, {onlyDaleChall: true})
+	t.equal(
+		results.daleChallDifficultWordCount,
+		0,
+		'For Dale-Chall, neither "can\'t" nor "aren\'t" is difficult.'
+	)
 
 	// Dale-Chall suffixes per http://www.lefthandlogic.com/htmdocs/tools/okapi/okapimanual/dale_challWorksheet.PDF
 	//	 ['s', 'ies', 'ing', 'n', 'ed', 'ied', 'ly', 'er', 'ier', 'est', 'iest']
@@ -80,6 +100,15 @@ test('readabilityScores', function(t) {
 		undefined,
 		'DifficultWords config not used - no polysyllabicWords.'
 	)
+	s =
+		'Capitalized Substantially Difficult words like University Professors are treated as Familiar!'
+	results = readabilityScores(s, {capsAsNames: true})
+	t.equal(
+		results.daleChallDifficultWordCount + results.polysyllabicWordCount,
+		0,
+		'Capitalized words as Names may be too dangerous to use.'
+	)
+	console.log(results)
 
 	// http://www.abrahamlincolnonline.org/lincoln/speeches/gettysburg.htm
 	s =

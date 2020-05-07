@@ -1,6 +1,6 @@
 {
   "name": "readability-scores",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Tests the readability of a string using multiple formulas",
   "license": "MIT",
   "keywords": [
@@ -77,7 +77,7 @@
     "check-coverage": true,
     "lines": 100,
     "functions": 100,
-    "branches": 97.9
+    "branches": 100
   },
   "prettier": {
     "tabWidth": 4,
@@ -94,7 +94,8 @@
       "readability-scores.js"
     ],
     "rules": {
-      "unicorn/no-for-loop": "off"
+	  "unicorn/no-for-loop": "off",
+	  "unicorn/prefer-includes": "off"
     }
   },
   "remarkConfig": {

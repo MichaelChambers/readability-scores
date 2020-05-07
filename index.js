@@ -32,7 +32,7 @@ function populateSpacheStems() {
 		let s
 		for (let i = 0; i < spache.length; ++i) {
 			w = spache[i]
-			if (!w.includes("'")) {
+			if (w.indexOf("'") < 0) {
 				s = stemmer(w)
 				spacheStems[s] = true
 			}
@@ -47,7 +47,7 @@ function populateDaleChallStems() {
 		let s
 		for (let i = 0; i < daleChall.length; ++i) {
 			w = daleChall[i]
-			if (!w.includes("'")) {
+			if (w.indexOf("'") < 0) {
 				s = stemmer(w)
 				daleChallStems[s] = true
 			}
@@ -253,7 +253,7 @@ function calcScores(tree, config) {
 		const syllables = syllable(value)
 		const normalized = normalize(node, {allowApostrophes: true})
 		const reCap = /^[A-Z]/
-		const bInitCap = config.bCapsAsNames && value.match(reCap)
+		const bInitCapAsName = config.bCapsAsNames && value.match(reCap)
 
 		wordCount++
 		syllableCount += syllables
@@ -263,7 +263,7 @@ function calcScores(tree, config) {
 		if (syllables >= 3) {
 			polysyllabicWord++
 
-			if (!config.bCapsAsNames || bInitCap) {
+			if (!bInitCapAsName) {
 				complexPolysyllabicWord++
 				if (config.bDifficultWords) {
 					polysyllabicWords.push(value)
@@ -278,13 +278,13 @@ function calcScores(tree, config) {
 			const reSuffixes = /(s|ing|ed)$/
 
 			if (
-				bInitCap ||
-				spache.includes(normalized) ||
+				bInitCapAsName ||
+				spache.indexOf(normalized) > -1 ||
 				(normalized.match(reSuffixes) &&
 					spacheStems[stemmer(normalized)])
 			) {
 				// Spache familiar word
-			} else if (!spacheUniqueUnfamiliarWords.includes(value)) {
+			} else if (spacheUniqueUnfamiliarWords.indexOf(value) < 0) {
 				spacheUniqueUnfamiliarWords.push(value)
 			}
 		}
@@ -299,8 +299,8 @@ function calcScores(tree, config) {
 			// Tested on the Gettysburg address, this found plenty more that should be unfamiliar, without a bunch of other false positives for endings like "ing" and "ly"
 
 			if (
-				bInitCap ||
-				daleChall.includes(normalized) ||
+				bInitCapAsName ||
+				daleChall.indexOf(normalized) > -1 ||
 				normalized.match(reNumber) ||
 				testDaleChallSuffixes(normalized)
 			) {
@@ -325,7 +325,7 @@ function calcScores(tree, config) {
 			daleChallStems[stemmer(normalized.replace(reRemovableSuffixes, ''))]
 		) {
 			const normLY = normalized.replace(reComboRemoveableSuffixes, 'ly')
-			return normalized === normLY || daleChall.includes(normLY)
+			return normalized === normLY || daleChall.indexOf(normLY) > -1
 			// If normalized === normLY, then normalized does not end in lier/liest, so is already a valid base+suffix
 			// If normalized is one of "livelier" or "liveliest", normLY would be "lively", which is in daleChall so returns true
 			// if normalized is one of "pricklier" or "prickliest", normLY would be "prickly", which is NOT in daleChall so returns false
