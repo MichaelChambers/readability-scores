@@ -30,7 +30,8 @@ function populateSpacheStems() {
 		spacheStems = {}
 		let w
 		let s
-		for (w of spache) {
+		for (let i = 0; i < spache.length; ++i) {
+			w = spache[i]
 			if (!w.includes("'")) {
 				s = stemmer(w)
 				spacheStems[s] = true
@@ -44,7 +45,8 @@ function populateDaleChallStems() {
 		daleChallStems = {}
 		let w
 		let s
-		for (w of daleChall) {
+		for (let i = 0; i < daleChall.length; ++i) {
+			w = daleChall[i]
 			if (!w.includes("'")) {
 				s = stemmer(w)
 				daleChallStems[s] = true
