@@ -1,6 +1,6 @@
 {
   "name": "readability-scores",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Tests the readability of a string using multiple formulas",
   "license": "MIT",
   "keywords": [
@@ -47,7 +47,7 @@
     "nlcst-to-string": "^2.0.0",
     "retext-english": "^3.0.0",
     "smog-formula": "^1.0.0",
-    "spache": "^1.0.0",
+    "spache": "^1.1.5",
     "spache-formula": "^1.0.0",
     "stemmer": "^1.0.5",
     "syllable": "^4.1.0",
@@ -94,8 +94,8 @@
       "readability-scores.js"
     ],
     "rules": {
-	  "unicorn/no-for-loop": "off",
-	  "unicorn/prefer-includes": "off"
+      "unicorn/no-for-loop": "off",
+      "unicorn/prefer-includes": "off"
     }
   },
   "remarkConfig": {
