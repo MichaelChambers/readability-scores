@@ -1,6 +1,6 @@
 {
   "name": "readability-scores",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Tests the readability of a string using multiple formulas",
   "license": "MIT",
   "keywords": [
@@ -36,33 +36,33 @@
   ],
   "types": "index.d.ts",
   "dependencies": {
-    "automated-readability": "^1.0.0",
-    "coleman-liau": "^1.0.0",
-    "dale-chall": "^1.0.0",
-    "dale-chall-formula": "^1.0.0",
-    "flesch": "^1.0.0",
-    "global": "^4.0.0",
-    "gunning-fog": "^1.0.0",
-    "nlcst-normalize": "^2.0.0",
-    "nlcst-to-string": "^2.0.0",
-    "retext-english": "^3.0.0",
-    "smog-formula": "^1.0.0",
+    "automated-readability": "^1.0.5",
+    "coleman-liau": "^1.0.5",
+    "dale-chall": "^1.0.4",
+    "dale-chall-formula": "^1.0.5",
+    "flesch": "^1.0.5",
+    "global": "^4.4.0",
+    "gunning-fog": "^1.0.6",
+    "nlcst-normalize": "^2.1.4",
+    "nlcst-to-string": "^2.0.4",
+    "retext-english": "^3.0.4",
+    "smog-formula": "^1.0.5",
     "spache": "^1.1.5",
-    "spache-formula": "^1.0.0",
+    "spache-formula": "^1.0.5",
     "stemmer": "^1.0.5",
     "syllable": "^4.1.0",
-    "unified": "^8.0.0",
-    "unist-util-visit": "^2.0.0"
+    "unified": "^9.0.0",
+    "unist-util-visit": "^2.0.2"
   },
   "devDependencies": {
-    "browserify": "^16.0.0",
+    "browserify": "^16.5.1",
     "nyc": "^15.0.1",
-    "prettier": "^1.0.0",
-    "remark-cli": "^7.0.0",
-    "remark-preset-wooorm": "^6.0.0",
-    "tape": "^4.0.0",
-    "tinyify": "^2.0.0",
-    "xo": "^0.25.0"
+    "prettier": "^2.0.5",
+    "remark-cli": "^8.0.0",
+    "remark-preset-wooorm": "^7.0.0",
+    "tape": "^5.0.0",
+    "tinyify": "^2.5.2",
+    "xo": "^0.30.0"
   },
   "scripts": {
     "format": "remark . -qfo && prettier --write \"**/*.js\" && xo --fix",
@@ -94,10 +94,9 @@
       "readability-scores.js"
     ],
     "rules": {
-      "unicorn/no-for-loop": "off",
+		"unicorn/no-for-loop": "off",
       "unicorn/prefer-includes": "off"
-    }
-  },
+    }},
   "remarkConfig": {
     "plugins": [
       "preset-wooorm"

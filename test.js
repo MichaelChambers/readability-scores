@@ -3,7 +3,7 @@
 var test = require('tape')
 var readabilityScores = require('.')
 
-test('readabilityScores', function(t) {
+test('readabilityScores', function (t) {
 	var s
 	var results
 
