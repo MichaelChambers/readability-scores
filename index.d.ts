@@ -16,7 +16,7 @@ interface ReadabilityConfig {
 	skipGunningFog?: boolean
 }
 
-function readabilityScores(
+declare function readabilityScores(
 	value: string,
 	config?: ReadabilityConfig
 ): {
